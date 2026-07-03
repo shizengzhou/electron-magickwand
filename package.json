@@ -1,7 +1,7 @@
 {
   "name": "magickwand.js",
   "version": "2.2.0-rc.1",
-  "description": "JavaScript and TypeScript bindings for ImageMagick-7 - native and WASM",
+  "description": "JavaScript and TypeScript bindings for ImageMagick-7 - electron",
   "main": "./native/index.cjs",
   "types": "./lib/index.d.ts",
   "exports": {
@@ -43,6 +43,10 @@
   "scripts": {
     "preinstall": "npx @mmomtchev/xpm run npm-preinstall",
     "install": "npx xpm run npm-install",
+    "postinstall": "node scripts/write-swig-sources.cjs",
+    "build": "node-gyp configure && node-gyp build",
+    "generate-bindings": "node scripts/generate-bindings.cjs",
+    "generate-bindings:force": "node scripts/generate-bindings.cjs --force",
     "lint": "npx eslint",
     "test": "npm test -w test",
     "test:integration": "npm run test:integration -w test",
@@ -62,7 +66,7 @@
     "convert",
     "filters",
     "node.js",
-    "wasm"
+    "electron"
   ],
   "binary": {
     "module_name": "magickwand",
@@ -99,6 +103,7 @@
     "eslint": "^10.0.0",
     "eslint-plugin-mocha": "^11.0.0",
     "gh-pages": "^6.1.1",
+    "node-gyp": "^13.0.0",
     "ts-loader": "^9.5.2",
     "typescript": "^5.2.2",
     "webpack": "^5.88.2",

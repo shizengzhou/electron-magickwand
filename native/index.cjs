@@ -1,8 +1,18 @@
 const path = require('path');
 const os = require('os');
 
-const binding_path = path.resolve(__dirname, '..', 'lib', 'binding', `${os.platform()}-${os.arch()}`, 'magickwand.node');
-// Workaround for https://github.com/conan-io/conan-center-index/issues/10740
+// node-gyp outputs to build/Release/ by default (build/Debug/ for debug builds)
+const buildType = process.env.NODE_ENV === 'development' ? 'Debug' : 'Release';
+let binding_path = path.resolve(__dirname, '..', 'build', buildType, 'magickwand.node');
+
+// If not found in platform-specific path, try Release
+try {
+  require.resolve(binding_path);
+} catch {
+  binding_path = path.resolve(__dirname, '..', 'build', 'Release', 'magickwand.node');
+}
+
+// Set up platform-specific environment for fontconfig
 switch (os.platform()) {
   case 'linux':
     // On Linux, this is (almost) always there - or otherwise you don't have fonts anyway
@@ -15,7 +25,10 @@ switch (os.platform()) {
     process.env['FONTCONFIG_PATH'] = '/usr/local/etc/fonts';
     break;
 }
-process.env['MAGICK_HOME'] = path.resolve(path.dirname(binding_path));
+
+// MAGICK_HOME: point to the ImageMagick config directory
+process.env['MAGICK_HOME'] = path.resolve(__dirname, '..', 'deps', 'ImageMagick', 'config');
+
 const dll = require(binding_path);
 
 // Proper implementation of the iterator protocol is very hard in C++

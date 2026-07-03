@@ -6,3 +6,4 @@ lib/binding
 /swig
 /preconf
 /xpacks
+swig-sources.gypi
