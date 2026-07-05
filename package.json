@@ -1,6 +1,6 @@
 {
-  "name": "magickwand.js",
-  "version": "2.2.0-rc.1",
+  "name": "electron-magickwand",
+  "version": "0.0.3",
   "description": "JavaScript and TypeScript bindings for ImageMagick-7 - electron",
   "main": "./native/index.cjs",
   "types": "./lib/index.d.ts",
@@ -68,30 +68,16 @@
     "node.js",
     "electron"
   ],
-  "binary": {
-    "module_name": "magickwand",
-    "module_path": "./lib/binding/{platform}-{arch}",
-    "remote_path": "v{version}",
-    "host": "https://github.com/mmomtchev/magickwand.js/releases/download/",
-    "package_name": "{platform}-{arch}.tar.gz",
-    "hosting": {
-      "provider": "github",
-      "repo": "mmomtchev/magickwand.js"
-    },
-    "napi_versions": [
-      8
-    ]
-  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mmomtchev/magickwand.js.git"
+    "url": "git+https://github.com/shizengzhou/electron-magickwand.git"
   },
-  "author": "Momtchil Momtchev <momtchil@momtchev.com>",
+  "author": "Shizeng Zhou <shizengzhou@outlook.com>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/mmomtchev/magickwand.js/issues"
+    "url": "https://github.com/shizengzhou/electron-magickwand/issues"
   },
-  "homepage": "https://github.com/mmomtchev/magickwand.js#readme",
+  "homepage": "https://github.com/shizengzhou/electron-magickwand#readme",
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.4",
     "@eslint/js": "^10.0.1",
@@ -103,7 +89,7 @@
     "eslint": "^10.0.0",
     "eslint-plugin-mocha": "^11.0.0",
     "gh-pages": "^6.1.1",
-    "node-gyp": "^13.0.0",
+    "node-gyp": "^11.5.0",
     "ts-loader": "^9.5.2",
     "typescript": "^5.2.2",
     "webpack": "^5.88.2",
@@ -132,7 +118,7 @@
     "properties": {
       "module_name": "magickwand",
       "native": true,
-      "wasm": true,
+      "wasm": false,
       "flavor": "async",
       "conan": true,
       "argsConanInstall": "-pr:a=conan.profile",

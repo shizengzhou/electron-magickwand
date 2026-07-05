@@ -1,10 +1,10 @@
 # electron-magickwand
 
-通过 AI 将 [magickwand.js](https://github.com/mmomtchev/magickwand.js) 改成支持 electron 的原生模块
+A native module for Electron, adapted from [magickwand.js](https://github.com/mmomtchev/magickwand.js) using AI.
 
-## 使用
+## Usage
 
-### 第一种方式
+### Method 1
 
 ```shell
 git clone --recursive https://github.com/shizengzhou/electron-magickwand
@@ -13,14 +13,16 @@ cd electron-magickwand
 
 npm install --build-from-source --enable-conan --regenerate
 ```
-然后在 electron 项目中通过 `link` 使用，在 electron 项目中安装 `@electron/rebuild`，然后编译模块
+
+Then use it in your Electron project via `link`, install `@electron/rebuild` in the Electron project, and rebuild the module:
 
 ```shell
 npm install --save-dev @electron/rebuild
 
 ./node_modules/.bin/electron-rebuild -w electron-magickwand
 ```
-### 第二种方式
+
+### Method 2
 
 ```shell
 npm install electron-magickwand --build-from-source --enable-conan --regenerate

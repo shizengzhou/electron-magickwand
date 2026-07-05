@@ -7,3 +7,4 @@ lib/binding
 /preconf
 /xpacks
 swig-sources.gypi
+.DS_Store
