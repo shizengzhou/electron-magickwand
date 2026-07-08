@@ -12,6 +12,9 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const PRECONF = path.join(ROOT, 'preconf');
 const CONAN_HOME = process.env.CONAN_HOME || path.join(process.env.USERPROFILE || 'C:\\Users', '.conan2');
+const HADRON_HOME = process.env.LOCALAPPDATA
+  ? path.join(process.env.LOCALAPPDATA, 'hadron')
+  : path.join(process.env.USERPROFILE || 'C:\\Users', 'AppData', 'Local', 'hadron');
 
 // MSVC-built static libs: normally .lib, but Meson-built packages output .a (still valid MSVC format)
 function isLibFile(name) {
@@ -51,13 +54,40 @@ function findCoreLibs(dirs) {
   for (const d of dirs) {
     try {
       for (const f of fs.readdirSync(d)) {
-        if (f.includes('Magick++') && isLibFile(f)) libs.magickpp = f;
+        if ((f.includes('Magick++') || f.includes('Magick___')) && isLibFile(f)) libs.magickpp = f;
         if (f.includes('MagickCore') && isLibFile(f)) libs.magickcore = f;
         if (f.includes('MagickWand') && isLibFile(f)) libs.magickwand = f;
       }
     } catch { /* skip */ }
   }
   return libs;
+}
+
+// Deduplicate libs with the same base name, keeping the highest version.
+// e.g. Iex-3_3.lib + Iex-3_4.lib → keep only Iex-3_4.lib
+function dedupLibNames(names) {
+  const map = new Map(); // baseName → { name, version }
+  for (const name of names) {
+    const m = name.match(/^(.+?)(?:-(\d[\d_]*(?:\d|a|b|rc)\d*))?\.(?:lib|a)$/);
+    if (!m) continue;
+    const base = m[1].toLowerCase();
+    const ver = (m[2] || '0').replace(/_/g, '.');
+    const existing = map.get(base);
+    if (!existing || compareVersions(ver, existing.ver) > 0) {
+      map.set(base, { name, ver });
+    }
+  }
+  return [...map.values()].map(v => v.name);
+}
+
+function compareVersions(a, b) {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const va = pa[i] || 0, vb = pb[i] || 0;
+    if (va !== vb) return va - vb;
+  }
+  return 0;
 }
 
 // Find ALL .lib names across all dirs
@@ -71,23 +101,24 @@ function findAllLibNames(allDirs) {
       }
     } catch { /* skip */ }
   }
-  const core = [...names].filter(n => n.includes('Magick'));
-  const delegates = [...names].filter(n => !n.includes('Magick'));
+  const deduped = dedupLibNames([...names]);
+  const core = deduped.filter(n => n.includes('Magick'));
+  const delegates = deduped.filter(n => !n.includes('Magick'));
   return [...core, ...delegates];
 }
 
-// Scan Conan cache for delegate .lib files.
-// Conan v2 stores built binaries in: ~/.conan2/p/b/<hash>/p/lib/*.lib
-// (the top-level p/ dir holds recipes, p/b/ holds built packages)
-function findConanDelegateDirs() {
+// Scan a cache directory for delegate .lib/.a files.
+// Supports both ~/.conan2 (standard Conan) and %LOCALAPPDATA%/hadron (xpm/hadron)
+function scanCacheDir(basePath) {
   const dirs = new Set();
+  if (!fs.existsSync(basePath)) return dirs;
 
   // Try built packages at p/b/ first (main location for .lib files)
-  const conanBuildDir = path.join(CONAN_HOME, 'p', 'b');
-  if (fs.existsSync(conanBuildDir)) {
+  const buildDir = path.join(basePath, 'p', 'b');
+  if (fs.existsSync(buildDir)) {
     try {
-      for (const item of fs.readdirSync(conanBuildDir)) {
-        const libDir = path.join(conanBuildDir, item, 'p', 'lib');
+      for (const item of fs.readdirSync(buildDir)) {
+        const libDir = path.join(buildDir, item, 'p', 'lib');
         try {
           if (fs.statSync(libDir).isDirectory()) {
             const files = fs.readdirSync(libDir);
@@ -99,11 +130,11 @@ function findConanDelegateDirs() {
   }
 
   // Also check top-level p/ (some packages unpack there)
-  const conanPkg = path.join(CONAN_HOME, 'p');
+  const pkgDir = path.join(basePath, 'p');
   try {
-    for (const item of fs.readdirSync(conanPkg)) {
+    for (const item of fs.readdirSync(pkgDir)) {
       if (item === 'b' || item.startsWith('cache')) continue;
-      const libDir = path.join(conanPkg, item, 'p', 'lib');
+      const libDir = path.join(pkgDir, item, 'p', 'lib');
       try {
         if (fs.statSync(libDir).isDirectory()) {
           const files = fs.readdirSync(libDir);
@@ -116,15 +147,29 @@ function findConanDelegateDirs() {
   return dirs;
 }
 
+function findConanDelegateDirs() {
+  const dirs = scanCacheDir(CONAN_HOME);
+  const hadronDirs = scanCacheDir(HADRON_HOME);
+  return new Set([...dirs, ...hadronDirs]);
+}
+
 // 1. IM core libs from preconf
 const preconfDirs = findAllLibDirs(PRECONF, 4);
-const coreLibs = findCoreLibs(preconfDirs);
+// Also find .a files from Meson's ninja build (build/native/deps/ImageMagick/)
+const mesonDir = path.join(ROOT, 'build', 'native', 'deps', 'ImageMagick');
+if (fs.existsSync(mesonDir)) {
+  const mesonDirs = findAllLibDirs(mesonDir, 1);
+  preconfDirs.forEach(d => mesonDirs.add(d)); // Merge (Set doesn't auto-merge)
+}
+const allIMDirs = new Set([...preconfDirs]);
+if (fs.existsSync(mesonDir)) findAllLibDirs(mesonDir, 1).forEach(d => allIMDirs.add(d));
+const coreLibs = findCoreLibs(allIMDirs);
 
 // 2. Conan delegate libs
 const conanDirs = findConanDelegateDirs();
 
 // Merge all directories
-const allDirs = new Set([...preconfDirs, ...conanDirs]);
+const allDirs = new Set([...allIMDirs, ...conanDirs]);
 
 const mode = process.argv[2] || 'libdir';
 

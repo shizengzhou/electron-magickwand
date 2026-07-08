@@ -1,5 +1,7 @@
 # electron-magickwand
 
+[English](./README.en.md) | 简体中文
+
 通过 AI 将 [magickwand.js](https://github.com/mmomtchev/magickwand.js) 改成支持 electron 的原生模块
 
 ## 使用
