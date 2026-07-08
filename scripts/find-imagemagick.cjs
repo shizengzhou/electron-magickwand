@@ -11,6 +11,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const PRECONF = path.join(ROOT, 'preconf');
+const PREBUILT_LIB = path.join(ROOT, 'lib', 'binding', `${process.platform}-${process.arch}`, 'lib');
 const CONAN_HOME = process.env.CONAN_HOME || path.join(process.env.USERPROFILE || 'C:\\Users', '.conan2');
 const HADRON_HOME = process.env.LOCALAPPDATA
   ? path.join(process.env.LOCALAPPDATA, 'hadron')
@@ -153,15 +154,12 @@ function findConanDelegateDirs() {
   return new Set([...dirs, ...hadronDirs]);
 }
 
-// 1. IM core libs from preconf
+// 1. IM core libs from preconf + prebuilt + meson
 const preconfDirs = findAllLibDirs(PRECONF, 4);
+const prebuiltDirs = findAllLibDirs(PREBUILT_LIB, 2);
 // Also find .a files from Meson's ninja build (build/native/deps/ImageMagick/)
 const mesonDir = path.join(ROOT, 'build', 'native', 'deps', 'ImageMagick');
-if (fs.existsSync(mesonDir)) {
-  const mesonDirs = findAllLibDirs(mesonDir, 1);
-  preconfDirs.forEach(d => mesonDirs.add(d)); // Merge (Set doesn't auto-merge)
-}
-const allIMDirs = new Set([...preconfDirs]);
+const allIMDirs = new Set([...preconfDirs, ...prebuiltDirs]);
 if (fs.existsSync(mesonDir)) findAllLibDirs(mesonDir, 1).forEach(d => allIMDirs.add(d));
 const coreLibs = findCoreLibs(allIMDirs);
 
